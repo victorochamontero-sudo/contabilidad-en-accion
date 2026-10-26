@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contabilidad en Acción - Versión Final</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b132b; --board-bg: #1c2541; --text: #ffffff;
+            --blue: #007bff; --orange: #fd7e14; --green: #28a745;
+            --purple: #6f42c1; --red: #dc3545; --gold: #ffc107;
+        }
+        body {
+            font-family: 'Montserrat', sans-serif; background-color: var(--bg-color);
+            background-image: radial-gradient(circle at center, #1c2541 0%, #0b132b 100%);
+            color: var(--text); margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; overflow-x: hidden;
+        }
+        h1 { text-align: center; margin-bottom: 5px; font-size: 2rem; text-shadow: 0 0 10px rgba(255,255,255,0.3);}
+        .subtitle { color: #a0aec0; margin-top: 0; margin-bottom: 20px; text-align: center; font-size: 0.9rem;}
+
+        /* Configuración */
+        #setup-screen {
+            background: rgba(28, 37, 65, 0.95); backdrop-filter: blur(10px);
+            border: 2px solid var(--gold); border-radius: 20px; padding: 30px;
+            width: 90%; max-width: 600px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 2000;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .input-group { width: 100%; margin-bottom: 15px; text-align: left; }
+        .input-group label { font-weight: 800; color: var(--gold); display: block; margin-bottom: 5px;}
+        select, input[type="text"] {
+            width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #4a5568;
+            background: #0b132b; color: white; font-family: inherit; font-size: 1rem; box-sizing: border-box;
+        }
+        select:focus, input[type="text"]:focus { outline: none; border-color: var(--blue); }
+        .player-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 20px;}
+
+        /* Juego */
+        #game-screen { display: none; width: 100%; max-width: 1100px; }
+        .layout { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
+
+        /* Tablero */
+        .board-container { background: #111; padding: 10px; border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 0 3px var(--gold); }
+        .board {
+            display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr);
+            gap: 4px; width: 600px; height: 600px; background-color: #0b132b;
+            border-radius: 10px; padding: 5px; position: relative;
+        }
+        .center-logo {
+            grid-column: 2 / 7; grid-row: 2 / 7; background: linear-gradient(135deg, #1c2541, #0b132b);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 10px; border: 2px solid rgba(255,255,255,0.1); padding: 20px; overflow: hidden;
+            position: relative;
+        }
+        
+        /* Animación de fondo del logo */
+        .center-logo::before {
+            content: ''; position: absolute; width: 150%; height: 150%;
+            background: radial-gradient(circle, rgba(255, 193, 7, 0.15) 0%, transparent 60%);
+            animation: pulseBg 4s infinite; z-index: 0;
+        }
+        @keyframes pulseBg { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 0.8; } }
+
+        .logo-text { font-size: 2.2rem; font-weight: 900; text-align: center; line-height: 1; color: #fff; z-index: 2; margin-top: 15px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);}
+        .logo-text span { color: var(--gold); font-size: 2.6rem; }
+        .logo-sub { font-size: 0.9rem; color: #a0aec0; font-weight: 600; margin-top: 5px; z-index: 2;}
+
+        /* NUEVO ICONO DE DADOS */
+        .dice-svg { width: 120px; height: 120px; z-index: 2; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.6)); animation: floatDice 3s ease-in-out infinite; }
+        @keyframes floatDice { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+
+        .cell {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 0.6rem; font-weight: 800; text-align: center;
+            position: relative; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.5);
+            color: white; padding: 2px; z-index: 5;
+        }
+        .cell i { font-size: 1.2rem; margin-bottom: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .start { background: linear-gradient(180deg, #28a745, #1e7e34); }
+        .end { background: linear-gradient(180deg, #343a40, #111); border: 2px solid white; }
+        .blue { background: linear-gradient(180deg, #007bff, #0056b3); }
+        .orange { background: linear-gradient(180deg, #fd7e14, #d9650d); }
+        .green { background: linear-gradient(180deg, #28a745, #1e7e34); }
+        .purple { background: linear-gradient(180deg, #6f42c1, #59359a); }
+        .red { background: linear-gradient(180deg, #dc3545, #bd2130); }
+        .event { background: linear-gradient(180deg, #ffc107, #d39e00); color: #000; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2), 0 0 15px rgba(255, 193, 7, 0.5); }
+        .event i { color: #000; text-shadow: none;}
+
+        /* Fichas */
+        .player-token {
+            position: absolute; width: 22px; height: 22px; border-radius: 50%;
+            border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: bold; color: #000; z-index: 10;
+            top: 50%; left: 50%;
+        }
+
+        /* Panel de Control */
+        .controls {
+            background: rgba(28, 37, 65, 0.9); backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.1); border-radius: 20px;
+            padding: 25px; width: 320px; display: flex; flex-direction: column; gap: 15px;
+        }
+        .turn-indicator {
+            background: var(--gold); color: #000; padding: 10px; border-radius: 10px;
+            text-align: center; font-weight: 900; font-size: 1.1rem; text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.4); transition: all 0.3s;
+        }
+        .scoreboard { display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; }
+        .score-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #0b132b; padding: 10px 15px; border-radius: 10px;
+            border-left: 5px solid #4a5568; transition: all 0.3s;
+        }
+        .score-row.active { border-left-color: var(--gold); background: #1c2541; transform: scale(1.02); }
+        .score-name { font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;}
+        .score-pts { font-weight: 900; color: var(--gold); font-size: 1.1rem; }
+
+        button {
+            background: linear-gradient(180deg, #007bff, #0056b3); color: white; border: none;
+            padding: 15px; font-size: 1.1rem; font-weight: 900; border-radius: 12px; cursor: pointer;
+            transition: all 0.2s; font-family: inherit; box-shadow: 0 5px 0 #003d80, 0 10px 20px rgba(0,0,0,0.5);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        button:hover:not(:disabled) { transform: translateY(-2px); }
+        button:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0px 0 #003d80; }
+        button:disabled { background: #4a5568; box-shadow: 0 5px 0 #2d3748; cursor: not-allowed; opacity: 0.7;}
+        
+        .btn-restart { background: linear-gradient(180deg, #6c757d, #495057); box-shadow: 0 5px 0 #343a40; font-size: 0.9rem; padding: 10px; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #1c2541; border-radius: 20px; width: 90%; max-width: 550px;
+            padding: 30px; text-align: center; border: 2px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+        }
+        .card-header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; font-weight: 900; font-size: 1.2rem; text-transform: uppercase; }
+        .card-icon { font-size: 2rem; }
+        .question-text { font-size: 1.2rem; line-height: 1.4; margin-bottom: 25px; font-weight: 600; }
+        .options { display: flex; flex-direction: column; gap: 12px; }
+        .option-btn {
+            background: #2d3748; color: white; padding: 15px; border: 2px solid #4a5568;
+            border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 1rem;
+            text-align: left; font-weight: 600;
+        }
+        .option-btn:hover:not(:disabled) { background: #4a5568; }
+        .correct { background: var(--green) !important; border-color: #fff !important; box-shadow: 0 0 20px rgba(40, 167, 69, 0.5); }
+        .incorrect { background: var(--red) !important; border-color: #fff !important; box-shadow: 0 0 20px rgba(220, 53, 69, 0.5); }
+        .feedback { margin-top: 20px; font-weight: 800; font-size: 1.2rem; min-height: 30px; }
+        .btn-continue { margin-top: 20px; background: linear-gradient(180deg, #28a745, #1e7e34); box-shadow: 0 5px 0 #155724; display: none; width: 100%; }
+
+        /* Ganador */
+        #winner-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 19, 43, 0.95); z-index: 3000; backdrop-filter: blur(10px);
+            padding: 20px; box-sizing: border-box;
+        }
+        .trophy-icon { font-size: 8rem; color: var(--gold); text-shadow: 0 0 40px var(--gold); animation: bounce 2s infinite; margin-bottom: 20px;}
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .winner-title { font-size: 3rem; font-weight: 900; background: linear-gradient(90deg, #fff, var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; text-align: center;}
+        .podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 40px; height: 280px; width: 100%; max-width: 800px;}
+        .podium-step { display: flex; flex-direction: column; align-items: center; width: 120px; }
+        .podium-name { font-weight: 800; margin-bottom: 5px; text-align: center; font-size: 0.9rem; word-break: break-word;}
+        .podium-score { color: var(--gold); font-weight: 900; font-size: 1.2rem; margin-bottom: 10px;}
+        .podium-block { width: 100%; border-radius: 10px 10px 0 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; color: rgba(0,0,0,0.5); box-shadow: inset 0 0 20px rgba(0,0,0,0.3); }
+        .p1 .podium-block { height: 180px; background: linear-gradient(180deg, var(--gold), #d39e00); }
+        .p2 .podium-block { height: 140px; background: linear-gradient(180deg, #e2e8f0, #a0aec0); }
+        .p3 .podium-block { height: 100px; background: linear-gradient(180deg, #cd7f32, #8c5a2b); }
+        .p4 .podium-block, .p5 .podium-block, .p6 .podium-block { height: 60px; background: #2d3748; color: white; font-size: 1.2rem;}
+    </style>
+</head>
+<body>
+
+    <!-- CONFIGURACIÓN -->
+    <div id="setup-screen">
+        <h1>Contabilidad en Acción</h1>
+        <p class="subtitle">Configura la partida</p>
+        
+        <div class="input-group">
+            <label>Puntaje Meta para Ganar:</label>
+            <select id="goal-score">
+                <option value="10">Rápida (10 Pts)</option>
+                <option value="20" selected>Normal (20 Pts)</option>
+                <option value="30">Larga (30 Pts)</option>
+                <option value="50">Maratón (50 Pts)</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>¿Cuántos jugadores van a jugar? (1 a 6)</label>
+            <select id="num-players" onchange="generateInputs()">
+                <option value="1">1 Jugador (Práctica)</option>
+                <option value="2" selected>2 Jugadores</option>
+                <option value="3">3 Jugadores</option>
+                <option value="4">4 Jugadores</option>
+                <option value="5">5 Jugadores</option>
+                <option value="6">6 Jugadores</option>
+            </select>
+        </div>
+
+        <div class="player-inputs" id="player-inputs"></div>
+
+        <button onclick="startGame()" style="width: 100%; background: linear-gradient(180deg, #28a745, #1e7e34); box-shadow: 0 5px 0 #155724;">¡Comenzar Juego!</button>
+    </div>
+
+    <!-- JUEGO -->
+    <div id="game-screen">
+        <div class="layout">
+            <div class="board-container">
+                <div class="board" id="board">
+                    <div class="center-logo">
+                        <!-- NUEVO DISEÑO: DADOS 3D FLOTANTES -->
+                        <svg class="dice-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Dado Trasero -->
+                            <g transform="translate(40, 30) rotate(-15)">
+                                <rect x="0" y="0" width="80" height="80" rx="15" fill="#007bff" stroke="#0056b3" stroke-width="4"/>
+                                <circle cx="20" cy="20" r="6" fill="#fff"/>
+                                <circle cx="60" cy="20" r="6" fill="#fff"/>
+                                <circle cx="40" cy="40" r="6" fill="#fff"/>
+                                <circle cx="20" cy="60" r="6" fill="#fff"/>
+                                <circle cx="60" cy="60" r="6" fill="#fff"/>
+                            </g>
+                            <!-- Dado Delantero -->
+                            <g transform="translate(90, 80) rotate(15)">
+                                <rect x="0" y="0" width="80" height="80" rx="15" fill="#ffc107" stroke="#d39e00" stroke-width="4"/>
+                                <circle cx="20" cy="20" r="6" fill="#0b132b"/>
+                                <circle cx="60" cy="60" r="6" fill="#0b132b"/>
+                                <circle cx="40" cy="40" r="6" fill="#0b132b"/>
+                            </g>
+                            <!-- Símbolo de suma contable -->
+                            <text x="150" y="50" font-family="Montserrat" font-size="30" font-weight="900" fill="#fff" opacity="0.8">+</text>
+                        </svg>
+                        
+                        <div class="logo-text">CONTABILIDAD<br><span>EN ACCIÓN</span></div>
+                        <div class="logo-sub">¡Llega a la meta de puntos!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="turn-indicator" id="turn-indicator">Turno de: Jugador 1</div>
+                <div style="text-align: center; font-weight: 900; color: var(--gold); margin-bottom: 5px;" id="goal-display">Meta: 20 Pts</div>
+                <button id="roll-btn" onclick="rollDice()"><i class="fas fa-dice"></i> Lanzar Dado</button>
+                <div style="font-size: 0.8rem; color: #a0aec0; text-align: center;">PUNTAJES</div>
+                <div class="scoreboard" id="scoreboard"></div>
+                <button class="btn-restart" onclick="location.reload()"><i class="fas fa-undo"></i> Nueva Partida</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="card-modal">
+        <div class="modal-content">
+            <div class="card-header" id="card-header">
+                <i class="fas fa-question-circle card-icon"></i>
+                <span id="card-title">PREGUNTA</span>
+            </div>
+            <div class="question-text" id="question-text">Cargando...</div>
+            <div class="options" id="options-container"></div>
+            <div class="feedback" id="feedback-text"></div>
+            <button class="btn-continue" id="continue-btn">Continuar <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <!-- GANADOR -->
+    <div id="winner-screen">
+        <i class="fas fa-trophy trophy-icon"></i>
+        <h2 class="winner-title">¡TENEMOS UN GANADOR!</h2>
+        <p style="color:#a0aec0; font-size:1.2rem;">Se alcanzó la meta de puntos</p>
+        <div class="podium" id="podium"></div>
+        <button onclick="location.reload()" style="margin-top: 30px; background: linear-gradient(180deg, #007bff, #0056b3); box-shadow: 0 5px 0 #003d80; width: 250px;">Jugar de Nuevo</button>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DEL TABLERO ---
+        const boardData = [
+            { type: "start", text: "INICIO", icon: "fa-flag-checkered" }, { type: "blue", text: "Pregunta", icon: "fa-question" },
+            { type: "orange", text: "Caso", icon: "fa-clipboard-list" }, { type: "green", text: "Registro", icon: "fa-book" },
+            { type: "blue", text: "Pregunta", icon: "fa-question" }, { type: "blue", text: "Pregunta", icon: "fa-question" },
+            { type: "event", text: "Avanza 2", icon: "fa-forward" }, { type: "end", text: "META", icon: "fa-flag-checkered" },
+            { type: "orange", text: "Caso", icon: "fa-clipboard-list" }, { type: "blue", text: "Pregunta", icon: "fa-question" },
+            { type: "green", text: "Registro", icon: "fa-book" }, { type: "red", text: "Desafío", icon: "fa-trophy" },
+            { type: "orange", text: "Caso", icon: "fa-clipboard-list" }, { type: "blue", text: "Pregunta", icon: "fa-question" },
+            { type: "event", text: "Retrocede 2", icon: "fa-backward" }, { type: "red", text: "Desafío", icon: "fa-trophy" },
+            { type: "purple", text: "Estados", icon: "fa-chart-bar" }, { type: "green", text: "Registro", icon: "fa-book" },
+            { type: "orange", text: "Caso", icon: "fa-clipboard-list" }, { type: "blue", text: "Pregunta", icon: "fa-question" },
+            { type: "event", text: "Avanza 2", icon: "fa-forward" }, { type: "red", text: "Desafío", icon: "fa-trophy" },
+            { type: "red", text: "Desafío", icon: "fa-trophy" }, { type: "orange", text: "Caso", icon: "fa-clipboard-list" }
+        ];
+
+        // --- BANCO DE 100 PREGUNTAS ---
+        // (Se ha mantenido el banco completo para que el juego funcione correctamente)
+        const cardsDB = {
+            blue: [
+                { q: "¿Cuál es un Activo Corriente?", options: ["A) Terrenos", "B) Cuentas por Cobrar", "C) Edificios", "D) Maquinaria"], correct: 1, points: 1 },
+                { q: "¿Qué define la Contabilidad?", options: ["A) Sistema de información", "B) Libro de compras", "C) Impuestos", "D) Personal"], correct: 0, points: 1 },
+                { q: "Tasa general del IVA en Chile:", options: ["A) 12%", "B) 15%", "C) 19%", "D) 21%"], correct: 2, points: 1 },
+                { q: "¿Qué representa el Patrimonio?", options: ["A) Deudas", "B) Derechos del dueño", "C) Dinero en caja", "D) Bienes"], correct: 1, points: 1 },
+                { q: "Ecuación contable fundamental:", options: ["A) Activo = Pasivo - Patrimonio", "B) Activo = Pasivo + Patrimonio", "C) Pasivo = Activo + Patrimonio", "D) Patrimonio = Activo + Pasivo"], correct: 1, points: 1 },
+                { q: "¿Cuál es un Pasivo Corriente?", options: ["A) Hipoteca", "B) Proveedores", "C) Capital", "D) Vehículos"], correct: 1, points: 1 },
+                { q: "Documento que respalda entrada de dinero:", options: ["A) Factura", "B) Boleta", "C) Comprobante de Ingreso", "D) Nota de Crédito"], correct: 2, points: 1 },
+                { q: "Una cuenta se 'saldó' cuando:", options: ["A) Debe > Haber", "B) Debe = Haber", "C) Haber > Debe", "D) Se cierra"], correct: 1, points: 1 },
+                { q: "Función del Libro Diario:", options: ["A) Registrar cronológicamente", "B) Guardar facturas", "C) Calcular impuestos", "D) Pagar sueldos"], correct: 0, points: 1 },
+                { q: "El IVA Crédito Fiscal se genera en:", options: ["A) Ventas", "B) Compras", "C) Sueldos", "D) Préstamos"], correct: 1, points: 1 },
+                { q: "La cuenta 'Mercaderías' representa:", options: ["A) Bienes para venta", "B) Muebles", "C) Gastos", "D) Dinero"], correct: 0, points: 1 },
+                { q: "Naturaleza de la cuenta 'Caja':", options: ["A) Acreedora", "B) Deudora", "C) Mixta", "D) Patrimonial"], correct: 1, points: 1 },
+                { q: "El Capital aumenta por el:", options: ["A) Debe", "B) Haber", "C) Activo", "D) Pasivo"], correct: 1, points: 1 },
+                { q: "Un gasto representa:", options: ["A) Aumento de patrimonio", "B) Consumo de recursos", "C) Deuda", "D) Bien"], correct: 1, points: 1 },
+                { q: "¿Qué es un ingreso?", options: ["A) Entrada de dinero", "B) Incremento de beneficios", "C) Deuda", "D) Gasto diferido"], correct: 1, points: 1 },
+                { q: "El Balance General muestra la situación:", options: ["A) En un período", "B) En una fecha determinada", "C) Al final del año", "D) Cada 5 años"], correct: 1, points: 1 },
+                { q: "El Estado de Resultados muestra:", options: ["A) Activos", "B) Utilidad o Pérdida", "C) Flujo de caja", "D) Patrimonio"], correct: 1, points: 1 },
+                { q: "¿Qué es la depreciación?", options: ["A) Pérdida de valor", "B) Aumento de valor", "C) Gasto personal", "D) Ingreso"], correct: 0, points: 1 },
+                { q: "Principio de 'Devengado':", options: ["A) Registrar al pagar", "B) Registrar al ocurrir el hecho", "C) Solo efectivo", "D) Al final del año"], correct: 1, points: 1 },
+                { q: "¿Qué es un activo fijo?", options: ["A) Dinero en caja", "B) Cuentas por cobrar", "C) Bienes para uso", "D) Mercaderías"], correct: 2, points: 1 }
+            ],
+            orange: [
+                { q: "Compra $500.000 + IVA a 30 días. ¿Monto Proveedores?", options: ["A) $500.000", "B) $595.000", "C) $600.000", "D) $550.000"], correct: 1, points: 2 },
+                { q: "Cliente paga $60.000 efectivo de deuda previa:", options: ["A) Aumenta Caja y disminuye CxC", "B) Aumenta Caja y Capital", "C) Aumenta Banco y Caja", "D) Aumenta CxC y Caja"], correct: 0, points: 2 },
+                { q: "Pago arriendo $200.000 efectivo. ¿Qué se carga?", options: ["A) Arriendo", "B) Caja", "C) Banco", "D) Proveedores"], correct: 0, points: 2 },
+                { q: "Venta $400.000 + IVA efectivo. ¿Cuánto entra a Caja?", options: ["A) $400.000", "B) $476.000", "C) $450.000", "D) $419.000"], correct: 1, points: 2 },
+                { q: "Aporte inicial $500.000 efectivo. ¿Qué cuentas aumentan?", options: ["A) Caja y Pasivo", "B) Caja y Capital", "C) Banco y Proveedores", "D) Caja y Gasto"], correct: 1, points: 2 },
+                { q: "Compra computador $250.000 transferencia. ¿Qué disminuye?", options: ["A) Caja", "B) Banco", "C) Proveedores", "D) Capital"], correct: 1, points: 2 },
+                { q: "Pago luz $45.000 cheque. ¿Qué se abona?", options: ["A) Caja", "B) Banco", "C) Gasto Luz", "D) Proveedores"], correct: 1, points: 2 },
+                { q: "Depósito $300.000 de Caja a Banco:", options: ["A) Debe Banco / Haber Caja", "B) Debe Caja / Haber Banco", "C) Debe Banco / Haber Capital", "D) Debe Gasto / Haber Banco"], correct: 0, points: 2 },
+                { q: "Compra $100.000 + IVA (50% contado, 50% crédito). Proveedores:", options: ["A) $119.000", "B) $100.000", "C) $59.500", "D) $50.000"], correct: 2, points: 2 },
+                { q: "Compra muebles $180.000 + IVA crédito. Activo que aumenta:", options: ["A) Caja", "B) Muebles", "C) Proveedores", "D) IVA Crédito"], correct: 1, points: 2 },
+                { q: "Pago sueldos $450.000 efectivo. Gasto:", options: ["A) Remuneraciones", "B) Arriendo", "C) Proveedores", "D) Caja"], correct: 0, points: 2 },
+                { q: "Cobro cheque $120.000 a transferencia. ¿Qué disminuye?", options: ["A) Caja", "B) Banco", "C) Documentos por Cobrar", "D) Proveedores"], correct: 2, points: 2 },
+                { q: "Venta $320.000 + IVA contado. IVA Débito:", options: ["A) $60.800", "B) $50.000", "C) $70.000", "D) $32.000"], correct: 0, points: 2 },
+                { q: "Abono a proveedor efectivo. ¿Lado de Proveedores?", options: ["A) Debe", "B) Haber", "C) Ambos", "D) Ninguno"], correct: 0, points: 2 },
+                { q: "Venta $400.000 + IVA efectivo. Cuenta que se aacredita:", options: ["A) Caja", "B) Ventas", "C) IVA Débito", "D) Clientes"], correct: 1, points: 2 },
+                { q: "Compra $200.000 + IVA crédito. Cuenta que se acredita:", options: ["A) Mercaderías", "B) Proveedores", "C) IVA Crédito", "D) Caja"], correct: 1, points: 2 },
+                { q: "Devolución mercadería contado (nos devuelven dinero):", options: ["A) Debe Caja / Haber Mercaderías", "B) Debe Mercaderías / Haber Caja", "C) Debe Caja / Haber Ventas", "D) Debe Proveedores / Haber Caja"], correct: 0, points: 2 },
+                { q: "Pago internet $30.000 efectivo:", options: ["A) Debe Gastos / Haber Caja", "B) Debe Caja / Haber Gastos", "C) Debe Banco / Haber Internet", "D) Debe Internet / Haber Banco"], correct: 0, points: 2 },
+                { q: "Declaración IVA Débito > Crédito. ¿Qué cuenta se paga?", options: ["A) IVA Crédito", "B) IVA por Pagar", "C) IVA Débito", "D) Gastos"], correct: 1, points: 2 },
+                { q: "Aporte socio en mercaderías $1.000.000:", options: ["A) Debe Mercaderías / Haber Capital", "B) Debe Capital / Haber Mercaderías", "C) Debe Caja / Haber Capital", "D) Debe Mercaderías / Haber Caja"], correct: 0, points: 2 }
+            ],
+            green: [
+                { q: "Regla de la partida doble:", options: ["A) Debe = Haber", "B) Solo Debe", "C) Haber mayor", "D) Debe mayor"], correct: 0, points: 2 },
+                { q: "IVA Crédito Fiscal se anota en:", options: ["A) Haber", "B) Debe", "C) No se anota", "D) Ambos"], correct: 1, points: 2 },
+                { q: "Abono a proveedor en efectivo se registra en:", options: ["A) Haber", "B) Debe", "C) Ambos", "D) Ninguno"], correct: 1, points: 2 },
+                { q: "¿Dónde va un ABONO en el libro diario?", options: ["A) Columna izquierda", "B) Columna derecha", "C) Ambas", "D) No se coloca"], correct: 1, points: 2 },
+                { q: "Ventas a crédito, ¿qué cuenta reemplaza a Caja?", options: ["A) Banco", "B) Clientes", "C) Proveedores", "D) Capital"], correct: 1, points: 2 },
+                { q: "¿Por qué lado aumenta Banco si un cliente transfiere?", options: ["A) Debe", "B) Haber", "C) Ambos", "D) Depende"], correct: 0, points: 2 },
+                { q: "Devolución mercadería al contado:", options: ["A) Debe Caja / Haber Mercaderías", "B) Debe Mercaderías / Haber Caja", "C) Debe Ventas / Haber Caja", "D) Debe Caja / Haber Ventas"], correct: 0, points: 2 },
+                { q: "¿Qué cuenta se acredita al vender mercadería al contado?", options: ["A) Caja", "B) Ventas", "C) Clientes", "D) Costo de Ventas"], correct: 1, points: 2 },
+                { q: "Compra insumos al crédito. ¿Qué cuenta se acredita?", options: ["A) Caja", "B) Proveedores", "C) Gastos", "D) IVA Crédito"], correct: 1, points: 2 },
+                { q: "Si un cliente paga una deuda, ¿qué activo disminuye?", options: ["A) Caja", "B) Banco", "C) Cuentas por Cobrar", "D) Mercaderías"], correct: 2, points: 2 },
+                { q: "Pago de deuda bancaria afecta a:", options: ["A) Aumenta Banco, disminuye Pasivo", "B) Disminuye Banco, disminuye Pasivo", "C) Aumenta Pasivo, disminuye Banco", "D) Solo Patrimonio"], correct: 1, points: 2 },
+                { q: "En asiento de compra, ¿qué cuenta se carga por el IVA?", options: ["A) IVA Débito", "B) IVA Crédito", "C) IVA por Pagar", "D) Proveedores"], correct: 1, points: 2 },
+                { q: "En asiento de venta, ¿qué cuenta se acredita por el IVA?", options: ["A) IVA Débito", "B) IVA Crédito", "C) IVA por Pagar", "D) Clientes"], correct: 0, points: 2 },
+                { q: "Naturaleza de 'Depreciación Acumulada':", options: ["A) Deudora", "B) Acreedora", "C) Mixta", "D) Gasto"], correct: 1, points: 2 },
+                { q: "IVA Crédito > IVA Débito. Resultado:", options: ["A) Remanente a favor", "B) Pago al SII", "C) Pérdida", "D) Ganancia"], correct: 0, points: 2 },
+                { q: "Libro donde se agrupan todas las cuentas:", options: ["A) Libro Diario", "B) Libro Mayor", "C) Libro de Compras", "D) Libro de Remuneraciones"], correct: 1, points: 2 },
+                { q: "Compra activo fijo al crédito. ¿Qué aumenta en el Haber?", options: ["A) Caja", "B) Proveedores", "C) Activo Fijo", "D) Capital"], correct: 1, points: 2 }
+            ],
+            purple: [
+                { q: "Ingresos $900.000 | Gastos $650.000. Utilidad:", options: ["A) $250.000", "B) $350.000", "C) $150.000", "D) $1.550.000"], correct: 0, points: 2 },
+                { q: "¿Qué entrega el Estado de Resultados?", options: ["A) Bienes", "B) Utilidad o Pérdida", "C) Deudas", "D) Flujo de efectivo"], correct: 1, points: 2 },
+                { q: "Activo $5.000.000 | Pasivo $2.000.000. Patrimonio:", options: ["A) $7.000.000", "B) $3.000.000", "C) $2.000.000", "D) $5.000.000"], correct: 1, points: 2 },
+                { q: "Masas patrimoniales del Balance General:", options: ["A) Ingresos, Gastos y Utilidad", "B) Activo, Pasivo y Patrimonio", "C) Caja, Banco y Proveedores", "D) Debe, Haber y Saldo"], correct: 1, points: 2 },
+                { q: "¿Por qué tener Utilidad no garantiza dinero en Banco?", options: ["A) Ventas a crédito o dinero en activos", "B) La utilidad es ficticia", "C) Comisiones bancarias", "D) Gastos mayores"], correct: 0, points: 2 },
+                { q: "¿Dónde van las Utilidades Retenidas?", options: ["A) Activo", "B) Pasivo", "C) Patrimonio", "D) Estado de Resultados"], correct: 2, points: 2 },
+                { q: "¿Qué es el Pasivo No Corriente?", options: ["A) Deudas corto plazo", "B) Deudas a más de 1 año", "C) Bienes", "D) Capital"], correct: 1, points: 2 },
+                { q: "Saldo negativo en Estado de Resultados indica:", options: ["A) Ganancia", "B) Pérdida", "C) Activo", "D) Pasivo"], correct: 1, points: 2 },
+                { q: "Objetivo de clasificar Activos en Corriente/No Corriente:", options: ["A) Evaluar liquidez", "B) Calcular impuestos", "C) Precio de venta", "D) Ordenar diario"], correct: 0, points: 2 },
+                { q: "¿Qué es la Depreciación Acumulada?", options: ["A) Gasto", "B) Contra-cuenta de activo", "C) Pasivo", "D) Patrimonio"], correct: 1, points: 2 },
+                { q: "¿Qué mide la Liquidez Corriente?", options: ["A) Rentabilidad", "B) Capacidad de cubrir deudas a corto plazo", "C) Endeudamiento", "D) Rotación"], correct: 1, points: 2 },
+                { q: "¿Qué son las Cuentas por Cobrar?", options: ["A) Deudas", "B) Derechos de cobro por ventas a crédito", "C) Dinero en efectivo", "D) Bienes"], correct: 1, points: 2 },
+                { q: "Fórmula del Patrimonio:", options: ["A) Activo + Pasivo", "B) Activo - Pasivo", "C) Pasivo - Activo", "D) Ingresos - Gastos"], correct: 1, points: 2 },
+                { q: "El Costo de Ventas se resta de:", options: ["A) Gastos", "B) Ingresos", "C) Patrimonio", "D) Activo"], correct: 1, points: 2 },
+                { q: "Gastos de administración se presentan en:", options: ["A) Balance General", "B) Estado de Resultados", "C) Flujo de Efectivo", "D) Libro Diario"], correct: 1, points: 2 },
+                { q: "Activo No Corriente se caracteriza por:", options: ["A) Líquido en <1 año", "B) Bien para uso, vida útil >1 año", "C) Deuda", "D) Gasto del mes"], correct: 1, points: 2 },
+                { q: "Capital de trabajo se calcula:", options: ["A) Activo Cte - Pasivo Cte", "B) Activo Total - Pasivo Total", "C) Patrimonio + Pasivo", "D) Ingresos - Gastos"], correct: 0, points: 2 },
+                { q: "Fuente para el Estado de Resultados:", options: ["A) Cuentas de Activo/Pasivo", "B) Cuentas de Ingresos/Gastos", "C) Libro de Caja", "D) Balance"], correct: 1, points: 2 },
+                { q: "Pasivo $1.500.000 | Patrimonio $2.500.000. Activo:", options: ["A) $1.000.000", "B) $4.000.000", "C) $2.500.000", "D) $3.500.000"], correct: 1, points: 2 },
+                { q: "Mucha utilidad pero sin efectivo implica problemas de:", options: ["A) Rentabilidad", "B) Liquidez", "C) Solvencia", "D) Patrimonio"], correct: 1, points: 2 }
+            ],
+            red: [
+                { q: "Error en registros. ¿Qué hacer primero?", options: ["A) Revisar respaldos", "B) Borrar cuentas", "C) Ignorar", "D) Cuadrar a la fuerza"], correct: 0, points: 3 },
+                { q: "Cliente quiebra no paga $80.000:", options: ["A) Ignorar", "B) Gasto Incobrable", "C) Sumar Activo", "D) Pasar a Pasivo"], correct: 1, points: 3 },
+                { q: "IVA Débito $190.000 | Crédito $250.000:", options: ["A) Remanente $60.000", "B) Pago $60.000", "C) Sin diferencia", "D) Pago 50%"], correct: 0, points: 3 },
+                { q: "Activos $1.200.000 | Pasivos $450.000. Patrimonio:", options: ["A) $1.650.000", "B) $750.000", "C) $450.000", "D) $1.200.000"], correct: 1, points: 3 },
+                { q: "¿Por qué separar gastos personales del dueño?", options: ["A) Ley", "B) Entidad Contable", "C) IVA", "D) El dueño no trabaja"], correct: 1, points: 3 },
+                { q: "Omisión factura venta $100.000 + IVA. Efecto:", options: ["A) Aumenta IVA Débito", "B) Subestima utilidad y omite IVA Débito", "C) No afecta", "D) Aumenta IVA Crédito"], correct: 1, points: 3 },
+                { q: "Principio de 'Devengado':", options: ["A) Registrar al ocurrir el hecho", "B) Solo si hay pago", "C) Al final del año", "D) Solo ventas"], correct: 0, points: 3 },
+                { q: "Inventario físico $800.000 | Libro $850.000:", options: ["A) Aumentar inventario", "B) Ajuste por faltante", "C) No hacer nada", "D) Ajustar caja"], correct: 1, points: 3 },
+                { q: "Pago anotado $500.000 en vez de $50.000. Corrección Caja:", options: ["A) Abonar $450.000", "B) Cargar $450.000", "C) Ignorar", "D) Borrar asiento"], correct: 0, points: 3 },
+                { q: "Diferencia Costo de Ventas vs Gasto Admin:", options: ["A) Costo se recupera con la venta", "B) Son iguales", "C) Gasto se recupera", "D) Costo no existe"], correct: 0, points: 3 },
+                { q: "Inflación en Valoración de Inventarios:", options: ["A) No influye", "B) Distorsiona costo de reposición", "C) Aumenta utilidad", "D) Disminuye ventas"], correct: 1, points: 3 },
+                { q: "Activo fijo $1.000.000 | Vida útil 5 años. Depreciación lineal:", options: ["A) $200.000", "B) $100.000", "C) $500.000", "D) $250.000"], correct: 0, points: 3 },
+                { q: "Registrar compra de mercadería como gasto:", options: ["A) Subestima activo y utilidad", "B) Sobrestima activo", "C) No afecta", "D) Aumenta patrimonio"], correct: 0, points: 3 },
+                { q: "Pago deuda a proveedor con cheque afecta:", options: ["A) Caja y Proveedores", "B) Banco y Proveedores", "C) Banco y Capital", "D) Caja y Capital"], correct: 1, points: 3 },
+                { q: "No registrar depreciación del período:", options: ["A) Subestima gastos y sobrestima utilidad", "B) Sobrestima gastos", "C) Subestima activo", "D) No afecta"], correct: 0, points: 3 },
+                { q: "Recibir préstamo bancario afecta:", options: ["A) Aumenta Banco y Préstamo", "B) Disminuye Banco", "C) Aumenta Capital", "D) Disminuye Pasivo"], correct: 0, points: 3 },
+                { q: "Venta a crédito. ¿Cuándo se reconoce ingreso?", options: ["A) Al entregar mercadería", "B) Al recibir pago", "C) Al final del año", "D) Al firmar contrato"], correct: 0, points: 3 },
+                { q: "IVA Crédito Fiscal $150.000 se ubica en:", options: ["A) Activo", "B) Pasivo", "C) Patrimonio", "D) Gasto"], correct: 0, points: 3 },
+                { q: "¿Qué es un asiento de ajuste?", options: ["A) Corregir o actualizar saldos al cierre", "B) Pago a proveedores", "C) Venta al contado", "D) Error contable"], correct: 0, points: 3 },
+                { q: "Activo $10.000.000 | Pasivo $4.000.000. Patrimonio:", options: ["A) $14.000.000", "B) $6.000.000", "C) $4.000.000", "D) $10.000.000"], correct: 1, points: 3 }
+            ]
+        };
+
+        // --- VARIABLES GLOBALES ---
+        let players = [];
+        let currentPlayerIndex = 0;
+        let isMoving = false;
+        let targetScore = 20;
+        let usedQuestions = new Set(); 
+        let currentQuestionData = null;
+        let previousPosition = 0; 
+
+        // --- SONIDOS ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'correct') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            } else if (type === 'win') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2);
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                oscillator.stop(audioCtx.currentTime + 0.6);
+                oscillator.start();
+                return;
+            }
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // --- INICIALIZACIÓN ---
+        function generateInputs() {
+            const num = parseInt(document.getElementById('num-players').value);
+            const container = document.getElementById('player-inputs');
+            container.innerHTML = '';
+            for (let i = 1; i <= num; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `p-name-${i}`;
+                input.placeholder = `Nombre Jugador ${i}`;
+                input.value = `Jugador ${i}`;
+                container.appendChild(input);
+            }
+        }
+
+        function startGame() {
+            const num = parseInt(document.getElementById('num-players').value);
+            targetScore = parseInt(document.getElementById('goal-score').value);
+            document.getElementById('goal-display').innerText = `Meta: ${targetScore} Pts`;
+            
+            const colors = ['#ffc107', '#007bff', '#dc3545', '#28a745', '#6f42c1', '#fd7e14'];
+            players = [];
+            for (let i = 1; i <= num; i++) {
+                const name = document.getElementById(`p-name-${i}`).value || `Jugador ${i}`;
+                players.push({ id: i - 1, name: name, score: 0, position: 0, color: colors[i - 1] });
+            }
+            usedQuestions.clear(); 
+
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            initBoard();
+            updateTurn();
+        }
+
+        // --- TABLERO ---
+        const boardElement = document.getElementById('board');
+        function initBoard() {
+            document.querySelectorAll('.cell').forEach(e => e.remove());
+            boardData.forEach((cell, index) => {
+                const cellDiv = document.createElement('div');
+                cellDiv.className = `cell ${cell.type}`;
+                cellDiv.id = `cell-${index}`;
+                cellDiv.innerHTML = `<i class="fas ${cell.icon}"></i><span>${cell.text}</span>`;
+                if (index <= 6) { cellDiv.style.gridRow = '1'; cellDiv.style.gridColumn = `${index + 1}`; }
+                else if (index >= 7 && index <= 11) { cellDiv.style.gridRow = `${index - 5}`; cellDiv.style.gridColumn = '7'; }
+                else if (index >= 12 && index <= 18) { cellDiv.style.gridRow = '7'; cellDiv.style.gridColumn = `${19 - index}`; }
+                else if (index >= 19 && index <= 23) { cellDiv.style.gridRow = `${25 - index}`; cellDiv.style.gridColumn = '1'; }
+                boardElement.appendChild(cellDiv);
+            });
+            renderPlayers();
+        }
+
+        function renderPlayers() {
+            document.querySelectorAll('.player-token').forEach(el => el.remove());
+            const playersInCell = {};
+            players.forEach(p => {
+                if (!playersInCell[p.position]) playersInCell[p.position] = [];
+                playersInCell[p.position].push(p);
+            });
+            for (const pos in playersInCell) {
+                const cell = document.getElementById(`cell-${pos}`);
+                const playersHere = playersInCell[pos];
+                playersHere.forEach((p, i) => {
+                    const token = document.createElement('div');
+                    token.className = 'player-token';
+                    token.style.backgroundColor = p.color;
+                    token.innerText = p.id + 1;
+                    const offset = i * 8;
+                    token.style.transform = `translate(calc(-50% + ${offset}px), calc(-50% - ${offset}px))`;
+                    cell.appendChild(token);
+                });
+            }
+        }
+
+        // --- TURNOS ---
+        function updateTurn() {
+            const currentPlayer = players[currentPlayerIndex];
+            document.getElementById('turn-indicator').innerText = `Turno de: ${currentPlayer.name}`;
+            document.getElementById('turn-indicator').style.backgroundColor = currentPlayer.color;
+            const scoreboard = document.getElementById('scoreboard');
+            scoreboard.innerHTML = '';
+            players.forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = `score-row ${idx === currentPlayerIndex ? 'active' : ''}`;
+                row.innerHTML = `<div class="score-name" style="color: ${p.color}"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> ${p.name}</div><div class="score-pts">${p.score} / ${targetScore}</div>`;
+                scoreboard.appendChild(row);
+            });
+            document.getElementById('roll-btn').disabled = false;
+            document.getElementById('roll-btn').innerHTML = '<i class="fas fa-dice"></i> Lanzar Dado';
+        }
+
+        // --- LÓGICA DEL JUEGO ---
+        function rollDice() {
+            if (isMoving) return;
+            isMoving = true;
+            
+            const currentPlayer = players[currentPlayerIndex];
+            previousPosition = currentPlayer.position; 
+
+            const rollBtn = document.getElementById('roll-btn');
+            rollBtn.disabled = true;
+            rollBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Moviendo...';
+
+            const dice = Math.floor(Math.random() * 6) + 1;
+            let steps = dice;
+
+            // Animación controlada paso a paso
+            const moveInterval = setInterval(() => {
+                if (steps > 0) {
+                    currentPlayer.position++;
+                    if (currentPlayer.position >= boardData.length) {
+                        currentPlayer.position = 0; // Reinicia al inicio si da la vuelta
+                    }
+                    renderPlayers();
+                    steps--;
+                } else {
+                    clearInterval(moveInterval);
+                    checkCellAction();
+                }
+            }, 300);
+        }
+
+        function checkCellAction() {
+            const currentPlayer = players[currentPlayerIndex];
+            const currentCell = boardData[currentPlayer.position];
+
+            if (currentCell.type === "event") {
+                handleEvent(currentCell.text);
+                return;
+            }
+
+            if (cardsDB[currentCell.type]) {
+                showCard(currentCell.type);
+            } else {
+                endTurn();
+            }
+        }
+
+        function handleEvent(text) {
+            const overlay = document.getElementById('card-modal');
+            const questionText = document.getElementById('question-text');
+            const optionsContainer = document.getElementById('options-container');
+            const cardHeader = document.getElementById('card-header');
+            const continueBtn = document.getElementById('continue-btn');
+            
+            cardHeader.innerHTML = `<i class="fas fa-bolt card-icon" style="color: var(--gold)"></i> <span style="color: var(--gold)">EVENTO SORPRESA</span>`;
+            questionText.innerHTML = `¡Casilla Especial! <br><br><strong style="color: var(--gold); font-size: 1.5rem;">${text}</strong>`;
+            optionsContainer.innerHTML = '';
+            document.getElementById('feedback-text').innerHTML = '';
+            continueBtn.style.display = 'inline-block';
+            
+            continueBtn.onclick = () => {
+                overlay.style.display = 'none';
+                const currentPlayer = players[currentPlayerIndex];
+                if (text === "Avanza 2") {
+                    currentPlayer.position += 2;
+                    if (currentPlayer.position >= boardData.length) currentPlayer.position -= boardData.length;
+                } else if (text === "Retrocede 2") {
+                    currentPlayer.position = Math.max(0, currentPlayer.position - 2);
+                }
+                renderPlayers();
+                setTimeout(checkCellAction, 500);
+            };
+
+            overlay.style.display = 'flex';
+        }
+
+        function showCard(type) {
+            const typeInfo = {
+                blue: { color: "var(--blue)", name: "PREGUNTA (1 PT)", icon: "fa-question" },
+                orange: { color: "var(--orange)", name: "CASO PRÁCTICO (2 PTS)", icon: "fa-clipboard-list" },
+                green: { color: "var(--green)", name: "REGISTRO CONTABLE (2 PTS)", icon: "fa-book" },
+                purple: { color: "var(--purple)", name: "ESTADOS FINANCIEROS (2 PTS)", icon: "fa-chart-bar" },
+                red: { color: "var(--red)", name: "DESAFÍO (3 PTS)", icon: "fa-trophy" }
+            };
+
+            const header = document.getElementById('card-header');
+            header.innerHTML = `<i class="fas ${typeInfo[type].icon} card-icon" style="color: ${typeInfo[type].color}"></i> <span style="color: ${typeInfo[type].color}">${typeInfo[type].name}</span>`;
+
+            let availableCards = cardsDB[type].filter((_, idx) => !usedQuestions.has(`${type}-${idx}`));
+            
+            if (availableCards.length === 0) {
+                cardsDB[type].forEach((_, idx) => usedQuestions.delete(`${type}-${idx}`));
+                availableCards = cardsDB[type];
+            }
+
+            const randomIndex = Math.floor(Math.random() * availableCards.length);
+            currentQuestionData = availableCards[randomIndex];
+            
+            const originalIndex = cardsDB[type].indexOf(currentQuestionData);
+            usedQuestions.add(`${type}-${originalIndex}`);
+
+            document.getElementById('question-text').innerText = currentQuestionData.q;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            document.getElementById('feedback-text').innerHTML = '';
+            
+            const continueBtn = document.getElementById('continue-btn');
+            continueBtn.style.display = 'none';
+            continueBtn.onclick = closeModal;
+
+            currentQuestionData.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('card-modal').style.display = 'flex';
+        }
+
+        function checkAnswer(selectedIndex, btnElement) {
+            const allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(b => b.onclick = null);
+
+            const feedback = document.getElementById('feedback-text');
+            const currentPlayer = players[currentPlayerIndex];
+            
+            if (selectedIndex === currentQuestionData.correct) {
+                btnElement.classList.add('correct');
+                currentPlayer.score += currentQuestionData.points;
+                playSound('correct');
+                feedback.innerHTML = `<span style="color: var(--green)"><i class="fas fa-check-circle"></i> ¡Correcto! +${currentQuestionData.points} Pts</span>`;
+                
+                if (currentPlayer.score >= targetScore) {
+                    document.getElementById('continue-btn').style.display = 'none';
+                    setTimeout(() => {
+                        document.getElementById('card-modal').style.display = 'none';
+                        showWinner(currentPlayer);
+                    }, 2000);
+                    return;
+                }
+                
+            } else {
+                btnElement.classList.add('incorrect');
+                allBtns[currentQuestionData.correct].classList.add('correct');
+                playSound('wrong');
+                
+                currentPlayer.position = previousPosition;
+                renderPlayers(); 
+                
+                feedback.innerHTML = `<span style="color: var(--red)"><i class="fas fa-times-circle"></i> Incorrecto. Retrocedes a tu casilla anterior.</span>`;
+            }
+
+            document.getElementById('continue-btn').style.display = 'inline-block';
+        }
+
+        function closeModal() {
+            document.getElementById('card-modal').style.display = 'none';
+            endTurn();
+        }
+
+        function endTurn() {
+            isMoving = false;
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateTurn();
+        }
+
+        // --- GANADOR Y PODIO ---
+        function showWinner(winner) {
+            playSound('win');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('winner-screen').style.display = 'flex';
+            
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            const podium = document.getElementById('podium');
+            podium.innerHTML = '';
+
+            sortedPlayers.forEach((player, index) => {
+                const rank = index + 1;
+                const step = document.createElement('div');
+                step.className = `podium-step p${rank}`;
+                
+                if (sortedPlayers.length > 3) step.style.width = '80px';
+                
+                const isWinner = player.id === winner.id;
+                const crown = isWinner ? '<i class="fas fa-crown" style="color: var(--gold); font-size: 1.2rem; margin-bottom: 5px;"></i>' : '';
+
+                step.innerHTML = `
+                    ${crown}
+                    <div class="podium-name" style="color: ${player.color}">${rank}° ${player.name}</div>
+                    <div class="podium-score">${player.score} Pts</div>
+                    <div class="podium-block">${rank}</div>
+                `;
+                podium.appendChild(step);
+            });
+
+            if (sortedPlayers.length > 3) {
+                podium.style.flexWrap = 'wrap';
+                podium.style.height = 'auto';
+            }
+        }
+
+        // Iniciar al cargar la página
+        generateInputs();
+    </script>
+</body>
+</html>
